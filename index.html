@@ -580,14 +580,16 @@ function updateEnemy(en, dt) {
 
 function checkHits() {
   if (!player.alive) return;
+  // 爆発判定：論理位置で（タイルにスナップ済みなので正確）
   for (var i = 0; i < exps.length; i++) {
     var ecx = exps[i].c * T + T/2;
     var ecy = exps[i].r * T + T/2;
-    if (Math.abs(player.x - ecx) < T*0.8 && Math.abs(player.y - ecy) < T*0.8) { killPlayer(); return; }
+    if (Math.abs(player.x - ecx) < T*0.6 && Math.abs(player.y - ecy) < T*0.6) { killPlayer(); return; }
   }
+  // 敵との接触：描画位置で判定（見た目に合わせる）＋半径を小さく
   for (var j = 0; j < enemies.length; j++) {
     if (!enemies[j].alive) continue;
-    if (Math.hypot(player.x-enemies[j].x, player.y-enemies[j].y) < T*0.7) { killPlayer(); return; }
+    if (Math.hypot(player.rx - enemies[j].x, player.ry - enemies[j].y) < T*0.45) { killPlayer(); return; }
   }
 }
 
