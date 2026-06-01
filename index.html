@@ -95,11 +95,20 @@ cv.height = T * ROWS;
 
 // --- Character definitions ---
 var CHARS = [
-  { name: 'vel',   label: 'ヴェル13世',  skin:'#f5c5a0', hair:'#d4a820', body:'#111111', eye:'#ff6600', acc:'#cc0000' },
-  { name: 'carla', label: 'カーラ',      skin:'#c8905a', hair:'#3d0808', body:'#1a0a1a', eye:'#cc3355', acc:'#444' },
-  { name: 'ama',   label: 'アマモリ',    skin:'#f0d0b8', hair:'#00c8d4', body:'#0d0d22', eye:'#00eeff', acc:'#1560bd' },
-  { name: 'belbo', label: 'べるぼ',      skin:'#f5c5a0', hair:'#c9a44c', body:'#f0f0f0', eye:'#5d4037', acc:'#795548' }
+  { name: 'vel',   label: 'ヴェル13世', img: null },
+  { name: 'carla', label: 'カーラ',     img: null },
+  { name: 'ama',   label: 'アマモリ',   img: null },
+  { name: 'belbo', label: 'べるぼ',     img: null }
 ];
+// 画像をロード
+(function() {
+  var files = ['vel','carla','ama','belbo'];
+  files.forEach(function(name, i) {
+    var img = new Image();
+    img.src = 'img/' + name + '.png';
+    CHARS[i].img = img;
+  });
+})();
 
 // --- Tile types ---
 var TL = { FLOOR:0, WALL:1, BLOCK:2, PU_BOMB:3, PU_RANGE:4, PU_SPEED:5 };
@@ -564,19 +573,32 @@ function drawExplosions() {
 
 // --- Draw character sprite ---
 function drawChar(ch, x, y, size, dir, wf, alpha) {
+  if (!ch.img || !ch.img.complete || ch.img.naturalWidth === 0) return;
+  cx.save();
+  cx.globalAlpha = alpha !== undefined ? alpha : 1;
+  var bob = wf === 1 ? -2 : 0;
+  if (dir === 2) {
+    cx.translate(x + size, y + bob);
+    cx.scale(-1, 1);
+    cx.drawImage(ch.img, 0, 0, size, size);
+  } else {
+    cx.drawImage(ch.img, x, y + bob, size, size);
+  }
+  cx.restore();
+}
+function drawCharOLD_UNUSED(ch, x, y, size, dir, wf, alpha) {
   cx.save();
   cx.globalAlpha = alpha !== undefined ? alpha : 1;
   cx.translate(x, y);
-  if (dir === 2) { cx.scale(-1,1); cx.translate(-size,0); } // flip for left
+  if (dir === 2) { cx.scale(-1,1); cx.translate(-size,0); }
 
   var s = size/32;
   var mx = size/2;
   var headY = size*0.3;
-  var hr = size*0.22; // head radius
+  var hr = size*0.22;
   var bw = size*0.44, bh = size*0.32;
   var by = headY + hr*0.8;
 
-  // legs
   var lo = wf===1 ? hr*0.4 : -hr*0.4;
   cx.fillStyle = ch.body === '#f0f0f0' ? '#334' : ch.body;
   cx.fillRect(mx - bw*0.28, by+bh+lo,     bw*0.26, bh*0.5);
@@ -662,7 +684,7 @@ function drawChar(ch, x, y, size, dir, wf, alpha) {
   }
 
   cx.restore();
-}
+} // end drawCharOLD_UNUSED
 
 // --- Draw enemy ---
 function drawEnemy(en) {
