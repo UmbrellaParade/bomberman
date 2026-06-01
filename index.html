@@ -340,6 +340,8 @@ function moveEnt(ent, dx, dy) {
 function makePlayer(ci) {
   return {
     x: T * 1.5, y: T * 1.5,
+    tx: T * 1.5, ty: T * 1.5,
+    moving: false,
     spd: 2.8,
     bombMax: 1, bombCount: 0, bombRange: 2,
     ci: ci, alive: true,
@@ -513,28 +515,48 @@ function startGame() {
 }
 
 // --- Update ---
-// タイル単位移動：1押し1マス、長押しで連続移動
+// タイル間スライド移動：押すと次タイルへなめらかに移動
 var prevKeys = {};
+var SLIDE_SPEED = 8; // 1フレームあたり何px進むか（T=40なら5フレームで1マス）
+var MOVE_REPEAT_DELAY = 6; // 長押し時の次マス開始間隔（フレーム）
 var moveRepeatTimer = 0;
-var MOVE_FIRST_DELAY = 18; // 長押し開始まで（フレーム）
-var MOVE_REPEAT_DELAY = 8; // 連続移動間隔（フレーム）
+// 移動先タイル（目標）
+// player.tx, player.ty = 目標ピクセル座標（タイル中心）
 
-function tryMovePlayer(dc, dr, dir) {
-  // 現在タイル（中心から算出）
+function startMovePlayer(dc, dr, dir) {
+  // 移動中は受け付けない
+  if (player.moving) return false;
   var tc = Math.round((player.x - T/2) / T);
   var tr = Math.round((player.y - T/2) / T);
   var nc = tc + dc, nr = tr + dr;
   if (!walkable(nc, nr) || hasBomb(nc, nr)) return false;
-  // 次タイルの中心へスナップ
-  player.x = nc * T + T/2;
-  player.y = nr * T + T/2;
+  player.tx = nc * T + T/2;
+  player.ty = nr * T + T/2;
   player.dir = dir;
-  player.wf = 1 - player.wf;
+  player.moving = true;
   return true;
 }
 
 function updatePlayer(dt) {
   if (!player.alive) return;
+
+  // スライド中 → 目標へ近づける
+  if (player.moving) {
+    var step = SLIDE_SPEED;
+    var dx = player.tx - player.x;
+    var dy = player.ty - player.y;
+    var dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist <= step) {
+      // 到着
+      player.x = player.tx;
+      player.y = player.ty;
+      player.moving = false;
+      player.wf = 1 - player.wf;
+    } else {
+      player.x += (dx / dist) * step;
+      player.y += (dy / dist) * step;
+    }
+  }
 
   var left  = keys['ArrowLeft']  || keys['a'];
   var right = keys['ArrowRight'] || keys['d'];
@@ -542,52 +564,50 @@ function updatePlayer(dt) {
   var down  = keys['ArrowDown']  || keys['s'];
   var anyDir = left || right || up || down;
 
-  // 方向を決定（優先順位: 左右 > 上下）
   var dc = 0, dr = 0, dir = player.dir;
-  if (left)  { dc = -1; dr =  0; dir = 2; }
+  if (left)       { dc = -1; dr =  0; dir = 2; }
   else if (right) { dc =  1; dr =  0; dir = 3; }
   else if (up)    { dc =  0; dr = -1; dir = 1; }
   else if (down)  { dc =  0; dr =  1; dir = 0; }
 
-  var prevAnyDir = prevKeys['left'] || prevKeys['right'] || prevKeys['up'] || prevKeys['down'];
+  var prevAnyDir = prevKeys['left']||prevKeys['right']||prevKeys['up']||prevKeys['down'];
   var justPressed = anyDir && !prevAnyDir;
 
-  if (justPressed) {
-    // 押した瞬間：即座に1マス移動
-    tryMovePlayer(dc, dr, dir);
-    moveRepeatTimer = MOVE_FIRST_DELAY;
-  } else if (anyDir) {
-    // 長押し：タイマーが切れたら繰り返し移動
-    moveRepeatTimer -= dt;
-    if (moveRepeatTimer <= 0) {
-      tryMovePlayer(dc, dr, dir);
-      moveRepeatTimer = MOVE_REPEAT_DELAY;
+  if (!player.moving) {
+    if (justPressed) {
+      startMovePlayer(dc, dr, dir);
+      moveRepeatTimer = 10; // 長押し開始まで少し待つ
+    } else if (anyDir) {
+      moveRepeatTimer -= dt;
+      if (moveRepeatTimer <= 0) {
+        startMovePlayer(dc, dr, dir);
+        moveRepeatTimer = MOVE_REPEAT_DELAY;
+      }
+    } else {
+      moveRepeatTimer = 0;
     }
-  } else {
-    moveRepeatTimer = 0;
   }
 
-  // 前フレームのキー状態を記録
   prevKeys['left']  = left;
   prevKeys['right'] = right;
   prevKeys['up']    = up;
   prevKeys['down']  = down;
 
-  // powerup pickup
-  var pc = Math.round((player.x - T/2) / T);
-  var pr = Math.round((player.y - T/2) / T);
-  if (pr >= 0 && pr < ROWS && pc >= 0 && pc < COLS) {
-    var t = map[pr][pc];
-    if (t === TL.PU_BOMB)  { player.bombMax++;  map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
-    if (t === TL.PU_RANGE) { player.bombRange++; map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
-    if (t === TL.PU_SPEED) { player.spd=Math.min(player.spd+0.5,5); map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
-  }
-  // ボムのpassable解除（タイル中心で判定）
-  var pc2 = Math.round((player.x - T/2) / T);
-  var pr2 = Math.round((player.y - T/2) / T);
-  for (var i = 0; i < bombs.length; i++) {
-    if (bombs[i].passable && (pc2 !== bombs[i].c || pr2 !== bombs[i].r)) {
-      bombs[i].passable = false;
+  // 到着タイルでパワーアップ取得
+  if (!player.moving) {
+    var pc = Math.round((player.x - T/2) / T);
+    var pr = Math.round((player.y - T/2) / T);
+    if (pr >= 0 && pr < ROWS && pc >= 0 && pc < COLS) {
+      var t = map[pr][pc];
+      if (t === TL.PU_BOMB)  { player.bombMax++;  map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
+      if (t === TL.PU_RANGE) { player.bombRange++; map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
+      if (t === TL.PU_SPEED) { player.spd=Math.min(player.spd+0.5,5); map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
+    }
+    // ボムのpassable解除
+    for (var i = 0; i < bombs.length; i++) {
+      if (bombs[i].passable && (pc !== bombs[i].c || pr !== bombs[i].r)) {
+        bombs[i].passable = false;
+      }
     }
   }
 }
