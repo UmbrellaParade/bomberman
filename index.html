@@ -95,10 +95,10 @@ cv.height = T * ROWS;
 
 // --- Character definitions ---
 var CHARS = [
-  { name: 'vel',   label: 'ヴェル13世', img: null },
-  { name: 'carla', label: 'カーラ',     img: null },
-  { name: 'ama',   label: 'アマモリ',   img: null },
-  { name: 'belbo', label: 'べるぼ',     img: null }
+  { name: 'vel',   label: 'ヴェル13世', img: null, glow: '#ff6600' },
+  { name: 'carla', label: 'カーラ',     img: null, glow: '#cc2244' },
+  { name: 'ama',   label: 'アマモリ',   img: null, glow: '#00ccff' },
+  { name: 'belbo', label: 'べるぼ',     img: null, glow: '#cc8800' }
 ];
 // 画像をロード
 (function() {
@@ -588,6 +588,17 @@ function drawChar(ch, x, y, size, dir, wf, alpha) {
   cx.save();
   cx.globalAlpha = alpha !== undefined ? alpha : 1;
   var bob = wf === 1 ? -2 : 0;
+  var cx2 = x + size / 2, cy2 = y + size / 2 + bob;
+
+  // キャラの下にグロー円（白背景画像でも見えるよう影付き）
+  cx.shadowBlur = 18;
+  cx.shadowColor = ch.glow;
+  cx.fillStyle = 'rgba(0,0,0,0.35)';
+  cx.beginPath();
+  cx.ellipse(cx2, y + size * 0.9 + bob, size * 0.38, size * 0.1, 0, 0, Math.PI * 2);
+  cx.fill();
+  cx.shadowBlur = 0;
+
   if (dir === 2) {
     cx.translate(x + size, y + bob);
     cx.scale(-1, 1);
