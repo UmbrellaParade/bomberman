@@ -575,9 +575,10 @@ function updateEnemy(en, dt) {
 
 function checkHits() {
   if (!player.alive) return;
-  var px = Math.floor(player.x / T), py = Math.floor(player.y / T);
   for (var i = 0; i < exps.length; i++) {
-    if (exps[i].c === px && exps[i].r === py) { killPlayer(); return; }
+    var ecx = exps[i].c * T + T/2;
+    var ecy = exps[i].r * T + T/2;
+    if (Math.abs(player.x - ecx) < T*0.8 && Math.abs(player.y - ecy) < T*0.8) { killPlayer(); return; }
   }
   for (var j = 0; j < enemies.length; j++) {
     if (!enemies[j].alive) continue;
@@ -588,9 +589,11 @@ function checkHits() {
 function checkEnemyHits() {
   for (var i = 0; i < enemies.length; i++) {
     if (!enemies[i].alive) continue;
-    var ec = Math.floor(enemies[i].x/T), er = Math.floor(enemies[i].y/T);
     for (var j = 0; j < exps.length; j++) {
-      if (exps[j].c === ec && exps[j].r === er) {
+      // 爆発セルの中心座標と敵の中心の距離で判定（タイルの80%以内）
+      var ecx = exps[j].c * T + T/2;
+      var ecy = exps[j].r * T + T/2;
+      if (Math.abs(enemies[i].x - ecx) < T*0.8 && Math.abs(enemies[i].y - ecy) < T*0.8) {
         enemies[i].alive = false;
         score += ETYPES[enemies[i].type].pts;
         refreshUI();
