@@ -399,12 +399,18 @@ function updatePlayer(dt) {
     if (t === TL.PU_RANGE) { player.bombRange++; map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
     if (t === TL.PU_SPEED) { player.spd=Math.min(player.spd+0.5,5); map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
   }
-  // プレイヤーがボムのタイルから出たら当たり判定を有効化
+  // プレイヤーの体がボムタイルと重なっていなくなったら当たり判定を有効化
+  var prad = T * 0.36;
   for (var i = 0; i < bombs.length; i++) {
     if (bombs[i].passable) {
-      var bc2 = Math.floor(player.x / T);
-      var br2 = Math.floor(player.y / T);
-      if (bc2 !== bombs[i].c || br2 !== bombs[i].r) {
+      var bx1 = bombs[i].c * T;
+      var bx2 = (bombs[i].c + 1) * T;
+      var by1 = bombs[i].r * T;
+      var by2 = (bombs[i].r + 1) * T;
+      // プレイヤーの円がボムタイルのAABBと重なっていなければ有効化
+      var overlapX = player.x + prad > bx1 && player.x - prad < bx2;
+      var overlapY = player.y + prad > by1 && player.y - prad < by2;
+      if (!(overlapX && overlapY)) {
         bombs[i].passable = false;
       }
     }
