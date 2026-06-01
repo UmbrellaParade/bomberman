@@ -165,7 +165,8 @@ function walkable(c, r) {
 }
 function hasBomb(c, r) {
   for (var i = 0; i < bombs.length; i++) {
-    if (bombs[i].c === c && bombs[i].r === r) return true;
+    // passable=true の間はプレイヤーが乗り続けているので衝突しない
+    if (bombs[i].c === c && bombs[i].r === r && !bombs[i].passable) return true;
   }
   return false;
 }
@@ -257,7 +258,7 @@ function placeBomb() {
   var bc = Math.round((player.x - T/2) / T);
   var br = Math.round((player.y - T/2) / T);
   if (hasBomb(bc, br)) return;
-  bombs.push({ c: bc, r: br, timer: 180, range: player.bombRange });
+  bombs.push({ c: bc, r: br, timer: 180, range: player.bombRange, passable: true });
   player.bombCount++;
 }
 
@@ -397,6 +398,16 @@ function updatePlayer(dt) {
     if (t === TL.PU_BOMB)  { player.bombMax++; map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
     if (t === TL.PU_RANGE) { player.bombRange++; map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
     if (t === TL.PU_SPEED) { player.spd=Math.min(player.spd+0.5,5); map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
+  }
+  // プレイヤーがボムのタイルから出たら当たり判定を有効化
+  for (var i = 0; i < bombs.length; i++) {
+    if (bombs[i].passable) {
+      var bc2 = Math.floor(player.x / T);
+      var br2 = Math.floor(player.y / T);
+      if (bc2 !== bombs[i].c || br2 !== bombs[i].r) {
+        bombs[i].passable = false;
+      }
+    }
   }
 }
 
