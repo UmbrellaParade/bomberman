@@ -58,6 +58,36 @@ canvas { display: block; border: 2px solid #2a2a3a; }
   border-radius: 50%; font-size: 30px;
   box-shadow: 0 0 18px rgba(255,100,0,0.5);
 }
+#bgmControls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+#muteBtn {
+  width: 46px; height: 46px;
+  background: rgba(255,255,255,0.1);
+  border: 2px solid rgba(255,255,255,0.25);
+  border-radius: 50%; font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#muteBtn:active { background: rgba(255,255,255,0.3); }
+#volSlider {
+  -webkit-appearance: none;
+  width: 70px; height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.3);
+  outline: none;
+}
+#volSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #ff8800;
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -74,6 +104,10 @@ canvas { display: block; border: 2px solid #2a2a3a; }
     <div class="btn empty"></div><div class="btn" id="bD">&#9660;</div><div class="btn empty"></div>
   </div>
   <div class="btn" id="bombBtn">&#x1F4A3;</div>
+  <div id="bgmControls">
+    <div id="muteBtn">&#x1F50A;</div>
+    <input type="range" id="volSlider" min="0" max="1" step="0.05" value="0.6">
+  </div>
 </div>
 
 <script>
@@ -119,12 +153,15 @@ document.addEventListener('touchstart', unlockAudio, { once: true });
 document.addEventListener('click',      unlockAudio, { once: true });
 document.addEventListener('keydown',    unlockAudio, { once: true });
 
+var bgmMuted = false;
+var bgmVolume = 0.6;
+
 function playBGM(charName) {
   if (!audioUnlocked) { pendingBGM = charName; return; }
   stopBGM();
   bgmAudio = new Audio('bgm/' + charName + '.mp3');
   bgmAudio.loop = true;
-  bgmAudio.volume = 0.6;
+  bgmAudio.volume = bgmMuted ? 0 : bgmVolume;
   var p = bgmAudio.play();
   if (p) p.catch(function(e){ console.warn('BGM play failed:', e); });
 }
@@ -135,6 +172,21 @@ function stopBGM() {
     bgmAudio = null;
   }
 }
+
+// ミュートボタン
+var muteBtn = document.getElementById('muteBtn');
+muteBtn.addEventListener('click', function() {
+  bgmMuted = !bgmMuted;
+  muteBtn.textContent = bgmMuted ? '🔇' : '🔊';
+  if (bgmAudio) bgmAudio.volume = bgmMuted ? 0 : bgmVolume;
+});
+
+// 音量スライダー
+var volSlider = document.getElementById('volSlider');
+volSlider.addEventListener('input', function() {
+  bgmVolume = parseFloat(volSlider.value);
+  if (!bgmMuted && bgmAudio) bgmAudio.volume = bgmVolume;
+});
 // 画像をロード
 (function() {
   var files = ['vel','carla','ama','belbo'];
