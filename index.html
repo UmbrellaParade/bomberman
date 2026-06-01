@@ -32,11 +32,28 @@ canvas { display: block; border: 2px solid #2a2a3a; }
   gap: 28px;
   margin-top: 10px;
 }
-.dpad {
-  display: grid;
-  grid-template-columns: repeat(3, 50px);
-  grid-template-rows: repeat(3, 50px);
-  gap: 4px;
+#joystickWrap {
+  position: relative;
+  width: 120px; height: 120px;
+  flex-shrink: 0;
+}
+#joystickBase {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.25);
+}
+#joystickThumb {
+  position: absolute;
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.5), rgba(255,150,0,0.7));
+  border: 2px solid rgba(255,200,100,0.8);
+  box-shadow: 0 0 12px rgba(255,120,0,0.6);
+  left: 36px; top: 36px;
+  pointer-events: none;
+  transition: box-shadow 0.1s;
 }
 .btn {
   width: 50px; height: 50px;
@@ -98,14 +115,13 @@ canvas { display: block; border: 2px solid #2a2a3a; }
 </div>
 <canvas id="c"></canvas>
 <div id="mobileControls">
-  <div class="dpad">
-    <div class="btn empty"></div><div class="btn" id="bU">&#9650;</div><div class="btn empty"></div>
-    <div class="btn" id="bL">&#9664;</div><div class="btn empty"></div><div class="btn" id="bR">&#9654;</div>
-    <div class="btn empty"></div><div class="btn" id="bD">&#9660;</div><div class="btn empty"></div>
+  <div id="joystickWrap">
+    <div id="joystickBase"></div>
+    <div id="joystickThumb"></div>
   </div>
   <div class="btn" id="bombBtn">&#x1F4A3;</div>
   <div id="bgmControls">
-    <div id="muteBtn">&#x1F50A;</div>
+    <div id="muteBtn" class="btn">&#x1F50A;</div>
     <input type="range" id="volSlider" min="0" max="1" step="0.05" value="0.6">
   </div>
 </div>
@@ -406,14 +422,59 @@ window.addEventListener('keydown', function(e) {
 });
 window.addEventListener('keyup', function(e) { keys[e.key] = false; });
 
-function mBtn(id, k) {
-  var el = document.getElementById(id);
-  el.addEventListener('pointerdown', function(e) { e.preventDefault(); keys[k]=true; el.classList.add('active'); });
-  el.addEventListener('pointerup',   function(e) { e.preventDefault(); keys[k]=false; el.classList.remove('active'); });
-  el.addEventListener('pointercancel', function(e) { keys[k]=false; el.classList.remove('active'); });
+// --- バーチャルジョイスティック ---
+var joyWrap  = document.getElementById('joystickWrap');
+var joyThumb = document.getElementById('joystickThumb');
+var joyActive = false;
+var joyOriginX = 0, joyOriginY = 0;
+var JOY_R = 60; // ベース半径
+var JOY_DEAD = 0.25; // デッドゾーン（全体の割合）
+
+function joySetKeys(nx, ny) {
+  // nx,ny は -1〜1 の正規化された値
+  keys['ArrowLeft']  = nx < -JOY_DEAD;
+  keys['ArrowRight'] = nx >  JOY_DEAD;
+  keys['ArrowUp']    = ny < -JOY_DEAD;
+  keys['ArrowDown']  = ny >  JOY_DEAD;
 }
-mBtn('bU','ArrowUp'); mBtn('bD','ArrowDown');
-mBtn('bL','ArrowLeft'); mBtn('bR','ArrowRight');
+
+function joyUpdate(clientX, clientY) {
+  var dx = clientX - joyOriginX;
+  var dy = clientY - joyOriginY;
+  var dist = Math.sqrt(dx*dx + dy*dy);
+  var clamp = Math.min(dist, JOY_R);
+  var angle = Math.atan2(dy, dx);
+  var tx = Math.cos(angle) * clamp;
+  var ty = Math.sin(angle) * clamp;
+  // サムを動かす
+  joyThumb.style.left = (60 + tx - 24) + 'px';
+  joyThumb.style.top  = (60 + ty - 24) + 'px';
+  joySetKeys(tx / JOY_R, ty / JOY_R);
+}
+
+function joyReset() {
+  joyActive = false;
+  joyThumb.style.left = '36px';
+  joyThumb.style.top  = '36px';
+  keys['ArrowLeft'] = keys['ArrowRight'] = keys['ArrowUp'] = keys['ArrowDown'] = false;
+}
+
+joyWrap.addEventListener('pointerdown', function(e) {
+  e.preventDefault();
+  joyActive = true;
+  var rect = joyWrap.getBoundingClientRect();
+  joyOriginX = rect.left + rect.width  / 2;
+  joyOriginY = rect.top  + rect.height / 2;
+  joyUpdate(e.clientX, e.clientY);
+  joyWrap.setPointerCapture(e.pointerId);
+});
+joyWrap.addEventListener('pointermove', function(e) {
+  if (!joyActive) return;
+  e.preventDefault();
+  joyUpdate(e.clientX, e.clientY);
+});
+joyWrap.addEventListener('pointerup',     function(e) { joyReset(); });
+joyWrap.addEventListener('pointercancel', function(e) { joyReset(); });
 document.getElementById('bombBtn').addEventListener('pointerdown', function(e) {
   e.preventDefault();
   if (gameState === ST.PLAY) placeBomb();
