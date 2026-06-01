@@ -481,8 +481,8 @@ function updatePlayer(dt) {
     player.wf = 1 - player.wf;
   }
 
-  // 描画位置を論理位置へなめらかに追従（lerp）
-  var lerp = 0.28;
+  // 描画位置を論理位置へなめらかに追従（フレームレート非依存lerp）
+  var lerp = 1 - Math.pow(0.01, dt / 60);
   player.rx += (player.x - player.rx) * lerp;
   player.ry += (player.y - player.ry) * lerp;
 
@@ -956,7 +956,7 @@ function drawOverlay(text, sub, color) {
 
 // --- Main loop ---
 function loop(ts) {
-  // requestAnimationFrame(loop); // replaced by setInterval
+  requestAnimationFrame(loop);
   var dt = Math.min((ts - lastTs) / 16.67, 3);
   lastTs = ts;
   animTick++;
@@ -1024,8 +1024,7 @@ window.addEventListener('resize', function() {
   cv.height = T * ROWS;
 });
 
-// Use setInterval as fallback in case rAF is throttled in preview iframe
-setInterval(function() { loop(performance.now()); }, 16);
+requestAnimationFrame(function(ts) { lastTs = ts; loop(ts); });
 
 })();
 </script>
