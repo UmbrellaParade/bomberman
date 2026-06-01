@@ -384,6 +384,27 @@ function updatePlayer(dt) {
   if (keys['ArrowDown']  || keys['s']) { dy =  player.spd; player.dir = 0; }
 
   if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
+
+  // グリッドスナップ：通路の中央に自動で寄せる
+  var snapStr = player.spd * 0.25;
+  var snapThresh = T * 0.45;
+  if (dx !== 0 && dy === 0) {
+    // 左右移動中 → Y を近いタイル中央に寄せる
+    var tileCenter = Math.round((player.y - T/2) / T) * T + T/2;
+    var diff = tileCenter - player.y;
+    if (Math.abs(diff) < snapThresh) {
+      player.y += Math.sign(diff) * Math.min(Math.abs(diff), snapStr);
+    }
+  }
+  if (dy !== 0 && dx === 0) {
+    // 上下移動中 → X を近いタイル中央に寄せる
+    var tileCenterX = Math.round((player.x - T/2) / T) * T + T/2;
+    var diffX = tileCenterX - player.x;
+    if (Math.abs(diffX) < snapThresh) {
+      player.x += Math.sign(diffX) * Math.min(Math.abs(diffX), snapStr);
+    }
+  }
+
   if (dx !== 0 || dy !== 0) {
     moveEnt(player, dx, dy);
     player.wt++;
