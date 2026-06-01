@@ -100,6 +100,23 @@ var CHARS = [
   { name: 'ama',   label: 'アマモリ',   img: null, glow: '#00ccff' },
   { name: 'belbo', label: 'べるぼ',     img: null, glow: '#cc8800' }
 ];
+
+// --- BGM ---
+var bgmAudio = null;
+function playBGM(charName) {
+  stopBGM();
+  bgmAudio = new Audio('bgm/' + charName + '.mp3');
+  bgmAudio.loop = true;
+  bgmAudio.volume = 0.6;
+  bgmAudio.play().catch(function(){});
+}
+function stopBGM() {
+  if (bgmAudio) {
+    bgmAudio.pause();
+    bgmAudio.currentTime = 0;
+    bgmAudio = null;
+  }
+}
 // 画像をロード
 (function() {
   var files = ['vel','carla','ama','belbo'];
@@ -306,7 +323,7 @@ window.addEventListener('keydown', function(e) {
   if ((e.key === ' ' || e.key === 'z' || e.key === 'Z') && gameState === ST.PLAY) placeBomb();
   if (e.key === 'Enter') {
     if (gameState === ST.SELECT) startGame();
-    else if (gameState === ST.OVER) { gameState = ST.SELECT; }
+    else if (gameState === ST.OVER) { stopBGM(); gameState = ST.SELECT; }
   }
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
     e.preventDefault();
@@ -371,6 +388,7 @@ function charPositions() {
 function startGame() {
   gameState = ST.PLAY;
   level = 1; score = 0; lives = 3;
+  playBGM(CHARS[selChar].name);
   init();
 }
 
@@ -886,7 +904,7 @@ function loop(ts) {
   if (gameState === ST.DEAD) {
     deathTimer -= dt;
     if (deathTimer <= 0) {
-      if (lives <= 0) gameState = ST.OVER;
+      if (lives <= 0) { stopBGM(); gameState = ST.OVER; }
       else { gameState = ST.PLAY; init(); }
     }
   }
