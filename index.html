@@ -58,16 +58,17 @@ canvas { display: block; border: 2px solid #2a2a3a; }
   border-radius: 50%; font-size: 30px;
   box-shadow: 0 0 18px rgba(255,100,0,0.5);
 }
-#muteBtn {
+#muteBtn, #pauseBtn {
   width: 32px; height: 32px;
   background: rgba(255,255,255,0.1);
   border: 1px solid rgba(255,255,255,0.25);
-  border-radius: 50%; font-size: 16px;
+  border-radius: 50%; font-size: 15px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; user-select: none;
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
-#muteBtn:active { background: rgba(255,255,255,0.3); }
+#muteBtn:active, #pauseBtn:active { background: rgba(255,255,255,0.3); }
 </style>
 </head>
 <body>
@@ -75,6 +76,7 @@ canvas { display: block; border: 2px solid #2a2a3a; }
   <span id="uiLives">&#x2764; 3</span>
   <span id="uiLevel">LEVEL 1</span>
   <span id="uiScore">SCORE 0</span>
+  <div id="pauseBtn">&#x23F8;</div>
   <div id="muteBtn">&#x1F50A;</div>
 </div>
 <canvas id="c"></canvas>
@@ -155,6 +157,23 @@ function stopBGM() {
   }
 }
 
+// ポーズボタン
+var pauseBtn = document.getElementById('pauseBtn');
+pauseBtn.addEventListener('click', function() {
+  if (gameState !== ST.PLAY && gameState !== ST.DEAD) return;
+  paused = !paused;
+  pauseBtn.textContent = paused ? '▶' : '⏸';
+  if (bgmAudio) {
+    if (paused) bgmAudio.pause();
+    else bgmAudio.play().catch(function(){});
+  }
+});
+window.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
+    pauseBtn.click();
+  }
+});
+
 // BGMボタン：タップで一時停止/再開
 var muteBtn = document.getElementById('muteBtn');
 muteBtn.addEventListener('click', function() {
@@ -183,6 +202,7 @@ var TL = { FLOOR:0, WALL:1, BLOCK:2, PU_BOMB:3, PU_RANGE:4, PU_SPEED:5 };
 // --- States ---
 var ST = { SELECT:0, PLAY:1, DEAD:2, NEXT:3, OVER:4 };
 var gameState = ST.SELECT;
+var paused = false;
 var selChar = 0, hoverChar = -1;
 var level = 1, score = 0, lives = 3;
 
@@ -978,8 +998,8 @@ function loop(ts) {
     return;
   }
 
-  // update
-  if (gameState === ST.PLAY) {
+  // update（ポーズ中はスキップ）
+  if (gameState === ST.PLAY && !paused) {
     updatePlayer(dt);
     for (var i = 0; i < enemies.length; i++) updateEnemy(enemies[i], dt);
 
@@ -1024,6 +1044,7 @@ function loop(ts) {
   if (gameState === ST.DEAD) palpha = 0.3 + Math.abs(Math.sin(animTick*0.15))*0.4;
   drawChar(CHARS[player.ci], player.rx-T/2, player.ry-T/2, T, player.dir, player.wf, palpha);
 
+  if (paused) drawOverlay('⏸  PAUSE', 'もう一度⏸ or Escで再開', '#aaccff');
   if (gameState === ST.NEXT) drawOverlay('LEVEL CLEAR!', 'NEXT LEVEL...', '#ffcc00');
   if (gameState === ST.OVER) {
     drawOverlay('GAME OVER', 'SCORE: '+score+'  /  タップでリスタート', '#ff3300');
