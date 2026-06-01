@@ -59,27 +59,31 @@ canvas { display: block; border: 2px solid #2a2a3a; }
   box-shadow: 0 0 18px rgba(255,100,0,0.5);
 }
 #bgmControls {
+  position: fixed;
+  top: 8px;
+  right: 8px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-end;
+  gap: 4px;
+  z-index: 200;
 }
 #muteBtn {
-  width: 46px; height: 46px;
-  background: rgba(255,255,255,0.1);
-  border: 2px solid rgba(255,255,255,0.25);
-  border-radius: 50%; font-size: 22px;
+  width: 36px; height: 36px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%; font-size: 18px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-#muteBtn:active { background: rgba(255,255,255,0.3); }
+#muteBtn:active { background: rgba(255,255,255,0.2); }
 #volPanel {
-  display: none; /* 普段は隠す */
+  display: none;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.7);
   border: 1px solid rgba(255,255,255,0.2);
   border-radius: 10px;
   padding: 8px 6px;
@@ -108,6 +112,14 @@ canvas { display: block; border: 2px solid #2a2a3a; }
   <span id="uiScore">SCORE 0</span>
 </div>
 <canvas id="c"></canvas>
+<!-- 右上固定のBGMコントロール -->
+<div id="bgmControls">
+  <div id="muteBtn">&#x1F50A;</div>
+  <div id="volPanel">
+    <input type="range" id="volSlider" min="0" max="1" step="0.05" value="0.6">
+  </div>
+</div>
+
 <div id="mobileControls">
   <div class="dpad">
     <div class="btn empty"></div><div class="btn" id="bU">&#9650;</div><div class="btn empty"></div>
@@ -115,12 +127,6 @@ canvas { display: block; border: 2px solid #2a2a3a; }
     <div class="btn empty"></div><div class="btn" id="bD">&#9660;</div><div class="btn empty"></div>
   </div>
   <div class="btn" id="bombBtn">&#x1F4A3;</div>
-  <div id="bgmControls">
-    <div id="muteBtn" class="btn">&#x1F50A;</div>
-    <div id="volPanel">
-      <input type="range" id="volSlider" min="0" max="1" step="0.05" value="0.6">
-    </div>
-  </div>
 </div>
 
 <script>
