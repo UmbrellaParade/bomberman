@@ -103,12 +103,30 @@ var CHARS = [
 
 // --- BGM ---
 var bgmAudio = null;
+var pendingBGM = null;
+
+// モバイル含めどのブラウザでも再生できるよう AudioContext をユーザー操作で unlock
+var audioUnlocked = false;
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  // 無音を一瞬再生してブラウザのautoplay制限を解除
+  var silent = new Audio();
+  silent.play().catch(function(){});
+  if (pendingBGM) { playBGM(pendingBGM); pendingBGM = null; }
+}
+document.addEventListener('touchstart', unlockAudio, { once: true });
+document.addEventListener('click',      unlockAudio, { once: true });
+document.addEventListener('keydown',    unlockAudio, { once: true });
+
 function playBGM(charName) {
+  if (!audioUnlocked) { pendingBGM = charName; return; }
   stopBGM();
   bgmAudio = new Audio('bgm/' + charName + '.mp3');
   bgmAudio.loop = true;
   bgmAudio.volume = 0.6;
-  bgmAudio.play().catch(function(){});
+  var p = bgmAudio.play();
+  if (p) p.catch(function(e){ console.warn('BGM play failed:', e); });
 }
 function stopBGM() {
   if (bgmAudio) {
