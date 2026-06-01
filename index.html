@@ -144,10 +144,15 @@ var audioUnlocked = false;
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  // 無音を一瞬再生してブラウザのautoplay制限を解除
   var silent = new Audio();
   silent.play().catch(function(){});
-  if (pendingBGM) { playBGM(pendingBGM); pendingBGM = null; }
+  // ゲーム中のときだけ曲を再生する
+  if (pendingBGM && gameState === ST.PLAY) {
+    playBGM(pendingBGM);
+    pendingBGM = null;
+  } else {
+    pendingBGM = null;
+  }
 }
 document.addEventListener('touchstart', unlockAudio, { once: true });
 document.addEventListener('click',      unlockAudio, { once: true });
