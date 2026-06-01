@@ -469,65 +469,81 @@ function startGame() {
 }
 
 // --- Update ---
+// タイル単位移動：1押し1マス、長押しで連続移動
+var prevKeys = {};
+var moveRepeatTimer = 0;
+var MOVE_FIRST_DELAY = 18; // 長押し開始まで（フレーム）
+var MOVE_REPEAT_DELAY = 8; // 連続移動間隔（フレーム）
+
+function tryMovePlayer(dc, dr, dir) {
+  // 現在タイル（中心から算出）
+  var tc = Math.round((player.x - T/2) / T);
+  var tr = Math.round((player.y - T/2) / T);
+  var nc = tc + dc, nr = tr + dr;
+  if (!walkable(nc, nr) || hasBomb(nc, nr)) return false;
+  // 次タイルの中心へスナップ
+  player.x = nc * T + T/2;
+  player.y = nr * T + T/2;
+  player.dir = dir;
+  player.wf = 1 - player.wf;
+  return true;
+}
+
 function updatePlayer(dt) {
   if (!player.alive) return;
-  var dx = 0, dy = 0;
-  if (keys['ArrowLeft']  || keys['a']) { dx = -player.spd; player.dir = 2; }
-  if (keys['ArrowRight'] || keys['d']) { dx =  player.spd; player.dir = 3; }
-  if (keys['ArrowUp']    || keys['w']) { dy = -player.spd; player.dir = 1; }
-  if (keys['ArrowDown']  || keys['s']) { dy =  player.spd; player.dir = 0; }
 
-  if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
+  var left  = keys['ArrowLeft']  || keys['a'];
+  var right = keys['ArrowRight'] || keys['d'];
+  var up    = keys['ArrowUp']    || keys['w'];
+  var down  = keys['ArrowDown']  || keys['s'];
+  var anyDir = left || right || up || down;
 
-  // グリッドスナップ：通路の中央に自動で寄せる
-  var snapStr = player.spd * 0.25;
-  var snapThresh = T * 0.45;
-  if (dx !== 0 && dy === 0) {
-    // 左右移動中 → Y を近いタイル中央に寄せる
-    var tileCenter = Math.round((player.y - T/2) / T) * T + T/2;
-    var diff = tileCenter - player.y;
-    if (Math.abs(diff) < snapThresh) {
-      player.y += Math.sign(diff) * Math.min(Math.abs(diff), snapStr);
+  // 方向を決定（優先順位: 左右 > 上下）
+  var dc = 0, dr = 0, dir = player.dir;
+  if (left)  { dc = -1; dr =  0; dir = 2; }
+  else if (right) { dc =  1; dr =  0; dir = 3; }
+  else if (up)    { dc =  0; dr = -1; dir = 1; }
+  else if (down)  { dc =  0; dr =  1; dir = 0; }
+
+  var prevAnyDir = prevKeys['left'] || prevKeys['right'] || prevKeys['up'] || prevKeys['down'];
+  var justPressed = anyDir && !prevAnyDir;
+
+  if (justPressed) {
+    // 押した瞬間：即座に1マス移動
+    tryMovePlayer(dc, dr, dir);
+    moveRepeatTimer = MOVE_FIRST_DELAY;
+  } else if (anyDir) {
+    // 長押し：タイマーが切れたら繰り返し移動
+    moveRepeatTimer -= dt;
+    if (moveRepeatTimer <= 0) {
+      tryMovePlayer(dc, dr, dir);
+      moveRepeatTimer = MOVE_REPEAT_DELAY;
     }
-  }
-  if (dy !== 0 && dx === 0) {
-    // 上下移動中 → X を近いタイル中央に寄せる
-    var tileCenterX = Math.round((player.x - T/2) / T) * T + T/2;
-    var diffX = tileCenterX - player.x;
-    if (Math.abs(diffX) < snapThresh) {
-      player.x += Math.sign(diffX) * Math.min(Math.abs(diffX), snapStr);
-    }
+  } else {
+    moveRepeatTimer = 0;
   }
 
-  if (dx !== 0 || dy !== 0) {
-    moveEnt(player, dx, dy);
-    player.wt++;
-    if (player.wt >= 8) { player.wf = 1 - player.wf; player.wt = 0; }
-  }
+  // 前フレームのキー状態を記録
+  prevKeys['left']  = left;
+  prevKeys['right'] = right;
+  prevKeys['up']    = up;
+  prevKeys['down']  = down;
 
   // powerup pickup
   var pc = Math.round((player.x - T/2) / T);
   var pr = Math.round((player.y - T/2) / T);
   if (pr >= 0 && pr < ROWS && pc >= 0 && pc < COLS) {
     var t = map[pr][pc];
-    if (t === TL.PU_BOMB)  { player.bombMax++; map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
+    if (t === TL.PU_BOMB)  { player.bombMax++;  map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
     if (t === TL.PU_RANGE) { player.bombRange++; map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
     if (t === TL.PU_SPEED) { player.spd=Math.min(player.spd+0.5,5); map[pr][pc]=TL.FLOOR; score+=50; refreshUI(); }
   }
-  // プレイヤーの体がボムタイルと重なっていなくなったら当たり判定を有効化
-  var prad = T * 0.36;
+  // ボムのpassable解除（タイル中心で判定）
+  var pc2 = Math.round((player.x - T/2) / T);
+  var pr2 = Math.round((player.y - T/2) / T);
   for (var i = 0; i < bombs.length; i++) {
-    if (bombs[i].passable) {
-      var bx1 = bombs[i].c * T;
-      var bx2 = (bombs[i].c + 1) * T;
-      var by1 = bombs[i].r * T;
-      var by2 = (bombs[i].r + 1) * T;
-      // プレイヤーの円がボムタイルのAABBと重なっていなければ有効化
-      var overlapX = player.x + prad > bx1 && player.x - prad < bx2;
-      var overlapY = player.y + prad > by1 && player.y - prad < by2;
-      if (!(overlapX && overlapY)) {
-        bombs[i].passable = false;
-      }
+    if (bombs[i].passable && (pc2 !== bombs[i].c || pr2 !== bombs[i].r)) {
+      bombs[i].passable = false;
     }
   }
 }
