@@ -155,12 +155,17 @@ function stopBGM() {
   }
 }
 
-// ミュートボタン：タップするだけでON/OFF
+// BGMボタン：タップで一時停止/再開
 var muteBtn = document.getElementById('muteBtn');
 muteBtn.addEventListener('click', function() {
-  bgmMuted = !bgmMuted;
-  muteBtn.textContent = bgmMuted ? '🔇' : '🔊';
-  if (bgmAudio) bgmAudio.volume = bgmMuted ? 0 : bgmVolume;
+  if (!bgmAudio) return;
+  if (bgmAudio.paused) {
+    bgmAudio.play().catch(function(){});
+    muteBtn.textContent = '🔊';
+  } else {
+    bgmAudio.pause();
+    muteBtn.textContent = '⏸';
+  }
 });
 // 画像をロード
 (function() {
